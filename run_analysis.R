@@ -95,7 +95,60 @@ read.one.data.set <- function(directory) {
 }
 
 
-# Read both data sets and append the rows into a single data frame:
-full.data.set <- rbind (read.one.data.set("train"), read.one.data.set("test"))
+create.frame.of.averages <- function(full.data) {
+    #    From the data set in step 4, creates a second, independent tidy
+    #    data set with the average of each variable for each activity and each subject.
 
-write.csv(full.data.set, "jono.output.csv")
+    # Get the list of unique subjects and the list of unique activities. We'll
+    # output a data frame with one row for each unique subject-activity pair.
+    subjects <- unique(full.data[["subject"]])
+    activities <- unique(full.data[["activity"]])
+
+    # The column indices of the columns of full.data that contain numeric
+    # data to be averaged:
+    numeric.cols <- 3:14
+
+    # Pre-allocate an empty data frame with the correct number of rows
+    # (one row for each activity for each subject):
+    num.rows <- length(subjects) * length(activities)
+
+    avg.frame <- data.frame(subject=vector('character', length = num.rows),
+                            activity=vector('character', length = num.rows),
+                            stringsAsFactors=FALSE)
+    # Add empty numeric columns to the data frame:
+    for (col.num in numeric.cols) {
+       col.name <- colnames(full.data)[col.num]
+       avg.frame[col.name] <- vector('numeric', length = num.rows)
+    }
+
+    # Loop through each subject and each activity. (For-loops might not be the most
+    # idiomatic way to do this in R, but I don't know a better way.)
+    rownum <- 1
+    for (s in subjects) {
+        for (a in activities) {
+             # grab all the observations that match this subject and this activity:
+             matches <- subset(full.data, subject==s & activity==a)
+             # for each numeric column in this subset, calculate the mean:
+             averages <- apply(matches[numeric.cols], 2, mean)
+
+             # fill in one row of the output data frame with the subject,       
+             # the activity, and the means we just calculated.
+             avg.frame[rownum, "subject"] <- as.character(s)
+             avg.frame[rownum, "activity"] <- as.character(a)
+             avg.frame[rownum, numeric.cols] <- averages
+             rownum <- rownum + 1
+        }
+    }
+    # Return the frame of averages:
+    avg.frame
+}
+
+run.assignment <- function() {
+    # Read both data sets and append the rows into a single data frame:
+    full.data.set <- rbind (read.one.data.set("train"), read.one.data.set("test"))
+
+    # Computes averages:
+    avg.frame <- create.frame.of.averages(full.data.set)
+    # save the averages to a CSV file:
+    write.csv(avg.frame, "jono.avgs.csv")
+}
