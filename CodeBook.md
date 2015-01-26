@@ -1,16 +1,16 @@
-= Variables in the Tidy Data File (tidy_averages.txt) =
+# Variables in the Tidy Data File (tidy_averages.txt)
 
 The tidy data file contains one row for each unique combination of test subject and activity. The first two columns (out of 68) specify the test subject and the activity. All of the feature variables for a single activity for a single test subject are in the same row, comprising columns 3 through 68.
 
-== Column 1 ("subject") ==
+## Column 1 ("subject")
 
 Identifies the study participant. It's a character type column containing a number from 1 to 30 uniquely but anonymously specifying the participant.
 
-== Column 2 ("activity") ==
+## Column 2 ("activity")
 
 The second column ("activity") identifies which activity the subject was performing. This is a character type column. There are six possible values: "Standing", "Sitting", "Laying", "Walking", "Walking Downstairs", "Walking Upstairs".
 
-== Columns 3 through 68 ==
+## Columns 3 through 68
 
 These are all numeric type columns. Each one holds the average (mean) of a single feature variable. They are named as follows:
 
