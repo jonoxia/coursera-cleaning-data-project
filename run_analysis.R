@@ -15,30 +15,36 @@
 # 5 STANDING
 # 6 LAYING
 
-# Mean and STD-dev for each measurement are:
-# 1, 2, 3 = tBodyAcc-mean()   x, y z
-# 4, 5, 6 = tBodyAcc - std()   x, y, z
-# 41, 42, 43 = tGravityAcc-mean() x, y, z
-# 44, 45, 46 = tGravityAcc-std() x, y, z
-# 81, 82, 83 = tBodyAccJerk-mean() x, y, z
-# 84, 85, 86 = tBodyAccJerk-std() x, y, z
-# 121-126 = tBodyGyro mean x, y, y and std x, y, z
-# 161 - 166 = tBodyGyroJerk mean x, y, z and std x, y, z
-# 201 = tBodyAccMag - mean()
-# 202 = tBodyAccMag - std()
-# 214 = tGravityAccMag - mean()
-# 215 = tGravityAccMag - std()
-# 227-228 = tBodyAccJerkMag - mean and std
-# 240 - 241 = tBodyGyroMag - mean and std
-# 253-255 = tBodyGyroJerkMag - mean and std
-# 266 - 268 fBodyAcc - mean, x, y, z
-# 269 - 271 fBodyAcc - std, x, y, z
-# 345 - 350 fBodyAccJerk - mean x, y, z, std x, y, z
-# 424 - 429 fBodyGyro - mean x, y, z, std x, y, z
-# 503, 504 = fbodyAccMag - mean and std
-# 516, 517 = fBodyBodyAccJerkMag - mean and std
-# 529, 530 - fBodyBodyGyroMag - mean and std
-# 542, 543 - fBodyBodyGyroJerkMag - mean and std
+select.variables <- function() {
+    # reads features.txt and chooses only rows where
+    # the variable name includes "mean()" or "std()". Converts these
+    # to readable variable names, and returns a data frame where the
+    # first column is the numbers and the second column is variable names.
+    # This will be used to extract and label the numbers from the raw data sets.
+
+    path <- paste(DATA.DIR, "/", "features.txt", sep="")
+    vars.table <- read.table(path, header=FALSE)
+    
+    # Regexp to match only rows that contain "mean()" or "std()".
+    # Double-backslash is to escape the backslash in the string literal
+    # and then escape the parenthesis in the regexp.
+    regexp <- "mean\\(\\)|std\\(\\)"
+
+    # Find rows where the regexp matches the second column:
+    matches <- vars.table[grep(regexp, vars.table[[2]]),]
+
+    # Turn these labels into readable (and valid) column names:
+    alter.name <- function(name) {
+        # Replace hyphen with dot, and strip out parens:
+        name <- gsub("-", ".", name)
+        name <- gsub("\\(|\\)", "", name)
+        name
+    }
+    matches[2] <- sapply(matches[[2]], alter.name)
+
+    matches
+}
+
 
 # t = time domain, f = frequency domain.
 # acc = device accelerometer, gyro = device gyroscope
@@ -54,31 +60,27 @@
 # - 'train/subject_train.txt': Each row identifies the subject who performed the activity for each 
 # window sample. Its range is from 1 to 30. 
 
-# rawdata <- read.table(filename, sep  = ",", header = TRUE) 
-# Appear to be space-delimited
+
+DATA.DIR <- "UCI HAR Dataset"
 
 label.activity <- function(code) {
   c("Walking", "Walking Upstairs", "Walking Downstairs", "Sitting", "Standing", "Laying")[[code]]
 }
 
-# The column numbers we want to extract and the names we want to give them:
-col.names <- c("t.body.acc.mean.x", "t.body.acc.mean.y", "t.body.acc.mean.z",
-               "t.body.acc.std.x", "t.body.acc.std.y", "t.body.acc.std.z",
-               "t.gravity.acc.mean.x", "t.gravity.acc.mean.y", "t.gravity.acc.mean.z",
-               "t.gravity.acc.std.x", "t.gravity.acc.std.y", "t.gravity.acc.std.z")
-col.numbers <- c(1, 2, 3, 4, 5, 6, 41, 42, 43, 44, 45, 46)
 
+read.one.data.set <- function(subdir, col.numbers, col.names) {
+     # Looks for files within the given subdirectory ("train" or "test")
+     # within DATA.DIR.
+     # col.numbers and col.names must be vectors of equal length.
+     # col.numbers tells which columns of the raw data file we want to keep
+     # and col.names gives the label to put on each of those columns.
 
-read.one.data.set <- function(directory) {
-     filename <- paste(directory, "/y_", directory, ".txt", sep="")
-     activities.table <- read.table(filename, header=FALSE)
-     filename <- paste(directory, "/subject_", directory, ".txt", sep="")
-     subjects.table <- read.table(filename, header=FALSE)
-     filename <- paste(directory, "/X_", directory, ".txt", sep="")
-     raw.data <- read.table(filename, header=FALSE, blank.lines.skip=TRUE)
-     # Default behavior, for no separator or column names supplied, is to split columns on
-     # 'any whitespace' and label columns V1.... V561  (yes there are 561 columns)
-
+     path <- paste(DATA.DIR, "/", subdir, "/y_", subdir, ".txt", sep="")
+     activities.table <- read.table(path, header=FALSE)
+     path <- paste(DATA.DIR, "/", subdir, "/subject_", subdir, ".txt", sep="")
+     subjects.table <- read.table(path, header=FALSE)
+     path <- paste(DATA.DIR, "/", subdir, "/X_", subdir, ".txt", sep="")
+     raw.data <- read.table(path, header=FALSE, blank.lines.skip=TRUE)
 
      labeled.activities <- sapply(activities.table[[1]], label.activity)
 
@@ -104,9 +106,9 @@ create.frame.of.averages <- function(full.data) {
     subjects <- unique(full.data[["subject"]])
     activities <- unique(full.data[["activity"]])
 
-    # The column indices of the columns of full.data that contain numeric
-    # data to be averaged:
-    numeric.cols <- 3:14
+    # Whih columns of full.data contain numeric data to be averaged 
+    # (all except the first two columns):
+    numeric.cols <- 3:ncol(full.data)
 
     # Pre-allocate an empty data frame with the correct number of rows
     # (one row for each activity for each subject):
@@ -144,11 +146,16 @@ create.frame.of.averages <- function(full.data) {
 }
 
 run.assignment <- function() {
-    # Read both data sets and append the rows into a single data frame:
-    full.data.set <- rbind (read.one.data.set("train"), read.one.data.set("test"))
+    # Find the column numbers and names for the variables we want to read:
+    vars <- select.variables()
+    col.numbers <- vars[[1]]
+    col.names <- vars[[2]]
 
-    # Computes averages:
+    # Read both data sets and append the rows into a single data frame:
+    full.data.set <- rbind (read.one.data.set("train", col.numbers, col.names),
+                            read.one.data.set("test", col.numbers, col.names))
+    # Compute averages:
     avg.frame <- create.frame.of.averages(full.data.set)
-    # save the averages to a CSV file:
-    write.csv(avg.frame, "jono.avgs.csv")
+    # save the averages to a txt file without row names:
+    write.table(avg.frame, file="tidy_averages.txt", row.names=FALSE)
 }
